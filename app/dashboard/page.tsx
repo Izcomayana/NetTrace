@@ -78,20 +78,37 @@ export default function Dashboard() {
   const [statusFilter, setStatus] = useState("all");
   const [typeFilter, setType] = useState("all");
 
-  const conflicts = DEVICES.filter(d => d.conflict);
-  const online = DEVICES.filter(d => d.status === "online").length;
-  const offline = DEVICES.filter(d => d.status === "offline").length;
-  const types = ["all", ...Array.from(new Set(DEVICES.map(d => d.type)))];
+  const [removedIds, setRemovedIds] = useState<number[]>([]);
+  const removeDevice = (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // prevent row click from firing
+    setRemovedIds(prev => [...prev, id]);
+  };
 
-  const filtered = useMemo(() => DEVICES.filter(d => {
+  const visibleDevices = DEVICES.filter(d => !removedIds.includes(d.id));
+  const conflicts = visibleDevices.filter(d => d.conflict);
+
+  const online = visibleDevices.filter(d => d.status === "online").length;
+  const offline = visibleDevices.filter(d => d.status === "offline").length;
+  const types = ["all", ...Array.from(new Set(visibleDevices.map(d => d.type)))];
+
+  const filtered = useMemo(() => visibleDevices.filter(d => {
     const q = search.toLowerCase();
     const matchSearch = !q || d.hostname.includes(q) || d.ip.includes(q) || d.mac.toLowerCase().includes(q) || d.vendor.toLowerCase().includes(q);
     const matchStatus = statusFilter === "all" || d.status === statusFilter;
     const matchType = typeFilter === "all" || d.type === typeFilter;
     return matchSearch && matchStatus && matchType;
-  }), [search, statusFilter, typeFilter]);
+  }), [search, statusFilter, typeFilter, removedIds]);
 
-  const selectStyle = { background: "var(--surface-2)", border: "1px solid var(--border-bright)", color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 12, padding: "7px 10px", outline: "none", cursor: "pointer" };
+  const selectStyle = {
+    background: "var(--surface-2)",
+    border: "1px solid var(--border-bright)",
+    color: "var(--text-secondary)",
+    fontFamily: "var(--font-mono)",
+    fontSize: 12,
+    padding: "7px 10px",
+    outline: "none",
+    cursor: "pointer"
+  };
 
   return (
     <div style={{ maxWidth: 1300, margin: "0 auto" }}>
@@ -140,7 +157,7 @@ export default function Dashboard() {
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 680 }}>
             <thead>
               <tr style={{ background: "var(--surface-2)" }}>
-                {["Hostname", "IP Address", "MAC Address", "Vendor", "Type", "Status", "Last Seen"].map(col => (
+                {["Hostname", "IP Address", "MAC Address", "Vendor", "Type", "Status", "Last Seen", ""].map(col => (
                   <th key={col} style={{ textAlign: "left", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase", padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 400 }}>{col}</th>
                 ))}
               </tr>
@@ -171,6 +188,35 @@ export default function Dashboard() {
                   <td style={{ padding: "11px 14px" }}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)", background: "var(--surface-2)", border: "1px solid var(--border)", padding: "2px 8px" }}>{d.type}</span></td>
                   <td style={{ padding: "11px 14px" }}><StatusBadge status={d.status} /></td>
                   <td style={{ padding: "11px 14px" }}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{d.lastSeen}</span></td>
+                  <td style={{ padding: "11px 14px" }}><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>{d.lastSeen}</span></td>
+                  <td style={{ padding: "11px 10px", textAlign: "center" }}>
+                    <button
+                      onClick={(e) => removeDevice(e, d.id)}
+                      title="Remove device"
+                      style={{
+                        width: 26, height: 26,
+                        background: "transparent",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        fontSize: 13,
+                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 0.2s",
+                        lineHeight: 1,
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = "var(--danger)";
+                        e.currentTarget.style.color = "var(--danger)";
+                        e.currentTarget.style.background = "rgba(255,77,106,0.1)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = "var(--border)";
+                        e.currentTarget.style.color = "var(--text-muted)";
+                        e.currentTarget.style.background = "transparent";
+                      }}>
+                      ✕
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -179,7 +225,16 @@ export default function Dashboard() {
 
         <div style={{ padding: "12px 18px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>
-            Showing {filtered.length} device{filtered.length !== 1 ? "s" : ""}
+            Showing {filtered.length} of {visibleDevices.length} device{visibleDevices.length !== 1 ? "s" : ""}
+            {removedIds.length > 0 && (
+              <button
+                onClick={() => setRemovedIds([])}
+                style={{ background: "none", border: "none", color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: 11, cursor: "pointer", marginLeft: 10, padding: 0, letterSpacing: "0.04em", transition: "color 0.2s", textDecoration: "underline" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "var(--cyan)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}>
+                Restore {removedIds.length} removed
+              </button>
+            )}
             {conflicts.length > 0 && <span style={{ color: "var(--danger)", marginLeft: 10 }}>· {conflicts.length} conflict{conflicts.length !== 1 ? "s" : ""} require attention</span>}
           </span>
           <button style={{ background: "transparent", border: "1px solid var(--border-bright)", color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11, padding: "6px 14px", cursor: "pointer", letterSpacing: "0.04em", transition: "all 0.2s" }}
