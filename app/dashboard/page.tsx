@@ -72,19 +72,40 @@ function StatusBadge({ status }: { status: DeviceStatus }) {
   );
 }
 
+const STORAGE_KEY = "nettrace_removed_devices";
+
 export default function Dashboard() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatus] = useState("all");
   const [typeFilter, setType] = useState("all");
 
-  const [removedIds, setRemovedIds] = useState<number[]>([]);
+  const [removedIds, setRemovedIds] = useState<number[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const removeDevice = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation(); // prevent row click from firing
-    setRemovedIds(prev => [...prev, id]);
+    e.stopPropagation();
+    setRemovedIds(prev => {
+      const updated = [...prev, id];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const restoreAll = () => {
+    setRemovedIds([]);
+    localStorage.removeItem(STORAGE_KEY);
   };
 
   const visibleDevices = DEVICES.filter(d => !removedIds.includes(d.id));
+
   const conflicts = visibleDevices.filter(d => d.conflict);
 
   const online = visibleDevices.filter(d => d.status === "online").length;
@@ -228,7 +249,7 @@ export default function Dashboard() {
             Showing {filtered.length} of {visibleDevices.length} device{visibleDevices.length !== 1 ? "s" : ""}
             {removedIds.length > 0 && (
               <button
-                onClick={() => setRemovedIds([])}
+                onClick={restoreAll}
                 style={{ background: "none", border: "none", color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: 11, cursor: "pointer", marginLeft: 10, padding: 0, letterSpacing: "0.04em", transition: "color 0.2s", textDecoration: "underline" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "var(--cyan)")}
                 onMouseLeave={e => (e.currentTarget.style.color = "var(--text-muted)")}>
