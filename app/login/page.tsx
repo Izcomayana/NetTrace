@@ -114,14 +114,25 @@ export default function LoginPage() {
   const [done, setDone] = useState(false);
 
   const handleSubmit = async () => {
-    if (!email || !password || (mode === "register" && !name)) return;
-    setLoading(true);
-    // Simulate auth — swap this with your real auth logic
-    await new Promise(r => setTimeout(r, 1400));
-    setLoading(false);
-    setDone(true);
-    // TODO: redirect to dashboard → router.push("/dashboard")
-  };
+  if (!email || !password || (mode === "register" && !name)) return;
+  setLoading(true);
+  await new Promise(r => setTimeout(r, 1400));
+  setLoading(false);
+  setDone(true);
+  setTimeout(() => {
+    window.location.href = "/dashboard";
+  }, 800);
+};
+
+  // const handleSubmit = async () => {
+  //   if (!email || !password || (mode === "register" && !name)) return;
+  //   setLoading(true);
+  //   // Simulate auth — swap this with your real auth logic
+  //   await new Promise(r => setTimeout(r, 1400));
+  //   setLoading(false);
+  //   setDone(true);
+  //   // TODO: redirect to dashboard → router.push("/dashboard")
+  // };
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", position: "relative", overflow: "hidden" }}>
